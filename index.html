@@ -335,7 +335,10 @@ body::before{
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.4/confetti.min.js"></script>
+<!-- OJO: en cdnjs, canvas-confetti/1.9.4/confetti.min.js es la build CommonJS:
+     cargada como <script> normal revienta con "module is not defined" y
+     window.confetti nunca llega a existir. Esta es la build de navegador. -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.4/dist/confetti.browser.min.js"></script>
 <script type="importmap">
 { "imports": { "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.185.1/three.module.min.js" } }
 </script>
@@ -944,10 +947,14 @@ function mostrarPremio(premio, cupon, codigo){
       const rey = $("#rey");
       rey.classList.remove("gana"); void rey.offsetWidth; rey.classList.add("gana");
       setTimeout(()=>rey.classList.remove("gana"), 1700);
-      if (window.confetti) confetti({
-        particleCount:150, spread:80, origin:{y:.5}, scalar:1.05,
-        colors:["#FFB727","#A27EEF","#FCD611","#2952BB","#FF3B3B","#FFF8D8"]
-      });
+      // El confeti es adorno: si el CDN falla, la cédula del premio igual se
+      // muestra. Nunca dejar que un adorno tumbe la entrega del tesoro.
+      try{
+        if (window.confetti) confetti({
+          particleCount:150, spread:80, origin:{y:.5}, scalar:1.05,
+          colors:["#FFB727","#A27EEF","#FCD611","#2952BB","#FF3B3B","#FFF8D8"]
+        });
+      }catch(err){}
     } else sfx.falla();
   }, 460);
 }
