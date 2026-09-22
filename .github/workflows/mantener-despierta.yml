@@ -1,0 +1,47 @@
+# ════════════════════════════════════════════════════════════
+#  Mantener despierta la bóveda
+#
+#  El plan gratis de Supabase PAUSA un proyecto tras ~7 días
+#  sin actividad en la base. Si eso pasa entre campañas, la
+#  máquina deja de responder y nadie se entera hasta que un
+#  cliente reclama.
+#
+#  Esta acción llama a ping() cada 3 días. Es una función que
+#  no hace nada más que devolver la hora del servidor: cero
+#  efectos secundarios, pero cuenta como actividad.
+#
+#  De paso sirve de chequeo de salud: si la base no responde,
+#  la acción falla y GitHub te manda un correo.
+# ════════════════════════════════════════════════════════════
+name: Mantener despierta la boveda
+
+on:
+  schedule:
+    - cron: "0 13 */3 * *"   # cada 3 dias, 08:00 en Lima
+  workflow_dispatch:          # y un boton para dispararla a mano
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Despertar Supabase
+        run: |
+          echo "Llamando a ping() en la boveda..."
+          RESPUESTA=$(curl -sS -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/ping" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+
+          CODIGO=$(echo "$RESPUESTA" | tail -n1)
+          CUERPO=$(echo "$RESPUESTA" | sed '$d')
+
+          echo "HTTP $CODIGO"
+          echo "Respuesta: $CUERPO"
+
+          if [ "$CODIGO" != "200" ]; then
+            echo "::error::La boveda no respondio bien (HTTP $CODIGO). Revisa Supabase."
+            exit 1
+          fi
+          echo "Boveda despierta."
