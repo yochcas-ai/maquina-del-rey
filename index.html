@@ -482,8 +482,12 @@ relleno.position.set(-4, 2, 3); escena.add(relleno);
 const R = 0.5;
 const BX = 2.65, BZ = 1.62;
 const ALTO = 2.15;
-const RIEL_Y = 2.8;
-const DUCTO_X = -BX - 0.52;
+const RIEL_Y = 4.4;
+/* alturas de la garra: reposo dentro de la vitrina; viaje por ENCIMA de la pared
+   (la cápsula cuelga 1.18 bajo la garra y la pared con su moldura llega a 2.26);
+   suelta justo sobre la boca del ducto */
+const REPOSO_Y = 2.05, VIAJE_Y = 3.6, SUELTA_Y = 1.45;
+const DUCTO_X = -BX - 0.85;   /* lejos de la pared: la cápsula (R .5) y los dedos abiertos caben sin tocarla */
 const BANDEJA_Y = -1.78;
 
 const matPared  = toon(0x4B2E83);
@@ -771,17 +775,30 @@ async function secuenciaMano(intento = 0){
     presa.estado = "presa";
   }
 
+  const cuelga = () => presa.obj.position.set(garra.position.x, garra.position.y - R - .18, garra.position.z);
+  // sube por encima de la pared antes de cruzar: así la cápsula nunca la atraviesa
   sfx.motor();
+  const yA = garra.position.y;
+  await Promise.all([
+    anima(520, k=>{ garra.position.y = yA + (VIAJE_Y - yA)*k; cuelga(); }),
+    moverCamara(V(garra.position.x*.4, 3.7, 8.6), V(garra.position.x*.5, 1.9, 0), 520)
+  ]);
   const x2 = garra.position.x, z2 = garra.position.z;
   await Promise.all([
     anima(950, k=>{
       garra.position.x = x2 + (DUCTO_X - x2)*k;
       garra.position.z = z2 + (0.15  - z2)*k;
-      presa.obj.position.set(garra.position.x, garra.position.y - R - .18, garra.position.z);
+      cuelga();
     }),
-    moverCamara(V(DUCTO_X*.55, 2.4, 7.4), V(DUCTO_X*.7, .8, .2), 950)
+    moverCamara(V(DUCTO_X*.55, 3.3, 7.8), V(DUCTO_X*.7, 1.6, .2), 950)
   ]);
-  await espera(220);
+  // baja hasta la boca del ducto y ahí la suelta
+  sfx.motor();
+  await Promise.all([
+    anima(560, k=>{ garra.position.y = VIAJE_Y + (SUELTA_Y - VIAJE_Y)*k; cuelga(); }),
+    moverCamara(V(DUCTO_X*.55, 2.4, 7.4), V(DUCTO_X*.7, .8, .2), 560)
+  ]);
+  await espera(200);
 
   sfx.pinza();
   await anima(300, k => aperturaGarra = k);
@@ -795,11 +812,14 @@ async function secuenciaMano(intento = 0){
 
 async function volverAlReposo(presa){
   if (presa){ escena.remove(presa.obj); capsulas = capsulas.filter(c=>c!==presa); }
+  const y3 = garra.position.y;
+  await anima(420, k=>{ garra.position.y = y3 + (VIAJE_Y - y3)*k; });
   const x3 = garra.position.x, z3 = garra.position.z;
   await Promise.all([
     anima(800, k=>{ garra.position.x = x3*(1-k); garra.position.z = z3*(1-k); }),
     moverCamara(CAM_BASE.pos.clone(), CAM_BASE.mira.clone(), 800)
   ]);
+  await anima(420, k=>{ garra.position.y = VIAJE_Y + (REPOSO_Y - VIAJE_Y)*k; });
   camLibre = true;
 }
 
@@ -905,8 +925,7 @@ $("#consola").addEventListener("submit", async e=>{
 
   pintarTesoro(); pintarContador();
   input.value = "";
-  ocupado = false; botonJugar.disabled = false; input.disabled = false;
-  volverAlReposo(presa);
+  volverAlReposo(presa).finally(()=>{ ocupado = false; botonJugar.disabled = false; input.disabled = false; });
 });
 
 /* ══════════════════════════════════════════════════════════
@@ -918,6 +937,23 @@ function mensajeWhatsApp(premio, cupon, codigo){
   l.push("• Mi código: " + codigo, "");
   l.push(premio.id === "funko" ? "¿Cómo hago para reclamar mi Funko?" : "Quiero usarlo en mi compra.");
   return l.join("\n");
+}
+
+/* Confeti de celebración: una explosión al centro, dos cañones desde los lados y
+   una lluvia corta. Si el usuario pidió menos movimiento, una sola ráfaga suave. */
+function celebrar(){
+  if (!window.confetti) return;
+  const colors = ["#FFB727","#A27EEF","#FCD611","#2952BB","#FF3B3B","#FFF8D8"], shapes = ["square","circle","star"];
+  if (SUAVE){ confetti({ particleCount:80, spread:70, origin:{y:.55}, colors, disableForReducedMotion:false }); return; }
+  confetti({ particleCount:170, spread:100, startVelocity:48, origin:{y:.52}, scalar:1.1, colors, shapes });
+  confetti({ particleCount:90, angle:60,  spread:62, startVelocity:62, origin:{x:0, y:.78}, colors, shapes });
+  confetti({ particleCount:90, angle:120, spread:62, startVelocity:62, origin:{x:1, y:.78}, colors, shapes });
+  const fin = performance.now() + 1500;
+  (function lluvia(){
+    confetti({ particleCount:6, angle:60,  spread:55, startVelocity:52, origin:{x:0, y:.72}, colors, shapes });
+    confetti({ particleCount:6, angle:120, spread:55, startVelocity:52, origin:{x:1, y:.72}, colors, shapes });
+    if (performance.now() < fin) setTimeout(lluvia, 110);
+  })();
 }
 
 function mostrarPremio(premio, cupon, codigo){
@@ -949,12 +985,7 @@ function mostrarPremio(premio, cupon, codigo){
       setTimeout(()=>rey.classList.remove("gana"), 1700);
       // El confeti es adorno: si el CDN falla, la cédula del premio igual se
       // muestra. Nunca dejar que un adorno tumbe la entrega del tesoro.
-      try{
-        if (window.confetti) confetti({
-          particleCount:150, spread:80, origin:{y:.5}, scalar:1.05,
-          colors:["#FFB727","#A27EEF","#FCD611","#2952BB","#FF3B3B","#FFF8D8"]
-        });
-      }catch(err){}
+      try{ celebrar(); }catch(err){}
     } else sfx.falla();
   }, 460);
 }
