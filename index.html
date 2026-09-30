@@ -445,10 +445,12 @@ const movil = matchMedia("(max-width: 700px)").matches;
 const renderer = new THREE.WebGLRenderer({ canvas:lienzo, antialias:true, alpha:false });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, movil ? 1.75 : 2));
 renderer.setClearColor(0x20143F, 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 
 const escena = new THREE.Scene();
 const camara = new THREE.PerspectiveCamera(38, 4/3, 0.1, 100);
-const CAM_BASE = { pos:new THREE.Vector3(0, 3.75, 9.0), mira:new THREE.Vector3(0, 0.45, 0) };
+const CAM_BASE = { pos:new THREE.Vector3(0, 4.0, 10.2), mira:new THREE.Vector3(0, 0.95, 0) };
 camara.position.copy(CAM_BASE.pos);
 const miraActual = CAM_BASE.mira.clone();
 
@@ -477,6 +479,12 @@ function contornear(malla, grosor = 1.055){
 escena.add(new THREE.AmbientLight(0xffffff, 1.25));
 const sol = new THREE.DirectionalLight(0xffffff, 2.1);
 sol.position.set(3.5, 6.5, 4.5); escena.add(sol);
+sol.castShadow = true;
+sol.shadow.mapSize.set(1024, 1024);
+sol.shadow.camera.left = -5; sol.shadow.camera.right = 5;
+sol.shadow.camera.top = 5; sol.shadow.camera.bottom = -5;
+sol.shadow.camera.near = .5; sol.shadow.camera.far = 22;
+sol.shadow.bias = -.0006; sol.shadow.normalBias = .03;
 const relleno = new THREE.DirectionalLight(0xA27EEF, .8);
 relleno.position.set(-4, 2, 3); escena.add(relleno);
 
@@ -484,12 +492,13 @@ relleno.position.set(-4, 2, 3); escena.add(relleno);
 const R = 0.5;
 const BX = 2.65, BZ = 1.62;
 const ALTO = 2.15;
-const RIEL_Y = 4.4;
+const RIEL_Y = 5.0;
 /* alturas de la garra: reposo dentro de la vitrina; viaje por ENCIMA de la pared
    (la cápsula cuelga 1.18 bajo la garra y la pared con su moldura llega a 2.26);
    suelta justo sobre la boca del ducto */
-const REPOSO_Y = 2.05, VIAJE_Y = 3.6, SUELTA_Y = 1.45;
-const DUCTO_X = -BX - 0.85;   /* lejos de la pared: la cápsula (R .5) y los dedos abiertos caben sin tocarla */
+const REPOSO_Y = 3.4, VIAJE_Y = 3.85, SUELTA_Y = 1.57;
+const GIRO_SUELTA = -0.77;   /* -44°: el hueco entre meñique y pulgar mira a la pared del ducto */
+const DUCTO_X = -BX - 1.1;   /* lejos de la pared: la cápsula (R .5) y los dedos abiertos caben sin tocarla */
 const BANDEJA_Y = -1.78;
 
 const matPared  = toon(0x4B2E83);
@@ -545,6 +554,7 @@ function nuevaCapsula(i){
   borde.scale.multiplyScalar(1.075);
   g.add(borde, sup, inf, aro);
   g.position.copy(siembra[i % siembra.length]);
+  g.traverse(o => { if (o.isMesh) o.receiveShadow = true; });
   escena.add(g);
   return { obj:g, vel:new THREE.Vector3((Math.random()-.5)*.6, 0, (Math.random()-.5)*.6), estado:"pozo" };
 }
@@ -572,37 +582,131 @@ function sembrar(n){
   for(let i=0;i<n;i++) capsulas.push(nuevaCapsula(i));
 }
 
-/* ══════ la mano del Rey ══════ */
+/* ══════ la mano del Rey ══════
+   Guante crema (el fondo de la marca) con puño dorado y escudo de corona.
+   Anatomía: dorso con costuras, cuatro dedos de largos distintos con tres
+   falanges y un pulgar que se opone. Se cuelga del cable y se balancea con
+   inercia; al agarrar, los dedos se doblan escalonados, uno tras otro. */
 const garra = new THREE.Group();
 const carro = new THREE.Mesh(new THREE.BoxGeometry(.62,.26,.42), matOroOsc);
 carro.position.y = RIEL_Y; contornear(carro, 1.05); escena.add(carro);
 const cable = new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,1,7), matOroOsc);
 escena.add(cable);
 
-const cabeza = new THREE.Mesh(new THREE.CylinderGeometry(.36,.29,.32,16), matOro);
-contornear(cabeza, 1.07); garra.add(cabeza);
-const domo = new THREE.Mesh(new THREE.SphereGeometry(.36,18,10,0,Math.PI*2,0,Math.PI/2), matOro);
-domo.position.y = .16; contornear(domo, 1.07); garra.add(domo);
-const punta = new THREE.Mesh(new THREE.ConeGeometry(.12,.3,10), matOro);
-punta.position.y = .46; contornear(punta, 1.1); garra.add(punta);
+const matCrema = toon(0xFFF8D8);
+const matTinta = new THREE.MeshBasicMaterial({ color:0x131316 });
 
-const dedos = [];
-const geoDedo = new THREE.CapsuleGeometry(.075, .58, 4, 10);
-for (let i=0;i<3;i++){
-  const pivote = new THREE.Group();
-  pivote.rotation.y = (i/3) * Math.PI*2;
-  const d = new THREE.Mesh(geoDedo, matOro);
-  d.position.set(0, -.38, .24); contornear(d, 1.1);
-  pivote.add(d); pivote.position.y = -.1;
-  garra.add(pivote); dedos.push(pivote);
+/* columpio: la mano cuelga de arriba y se balancea alrededor del punto del cable */
+const ESC = 1.4;                                            /* la mano es más grande que la cápsula: la rodea */
+const columpio = new THREE.Group(); columpio.position.y = .55*ESC; garra.add(columpio);
+const mano = new THREE.Group(); mano.position.y = -.55*ESC; mano.scale.setScalar(ESC); columpio.add(mano);
+
+/* dorso de la mano: elipsoide achatado */
+const PX = 1, PY = .5, PZ = .95, PR = .5;
+const palma = new THREE.Mesh(new THREE.SphereGeometry(PR, 40, 24), matCrema);
+palma.scale.set(PX, PY, PZ); palma.position.y = .02;
+contornear(palma, 1.08); mano.add(palma);
+
+/* costuras del dorso: tres líneas desde el puño hasta la base de los dedos */
+function costura(xs){
+  const pts = [];
+  for (let k=0; k<=8; k++){
+    const y = .17 - k*.045;                                  /* de arriba a abajo */
+    const ny = (y - .02) / (PR*PY);
+    const nx = xs / (PR*PX);
+    const q = 1 - nx*nx - ny*ny; if (q <= 0) continue;
+    pts.push(new THREE.Vector3(xs, y, PR*PZ*Math.sqrt(q) * 1.012));
+  }
+  return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, .011, 5, false), matTinta);
 }
-garra.position.set(0, 2.05, 0);
+[-.15, 0, .15].forEach(x => mano.add(costura(x)));
+
+/* puño evasé: se abre hacia arriba, como un guante de dibujos animados */
+const puno = new THREE.Mesh(new THREE.CylinderGeometry(.37,.29,.28,40), matCrema);
+puno.position.y = .33; contornear(puno, 1.06); mano.add(puno);
+[.31].forEach(y => {                                          /* un pliegue de tela */
+  const p = new THREE.Mesh(new THREE.TorusGeometry(.335,.011,6,40), matTinta);
+  p.rotation.x = Math.PI/2; p.position.y = y; mano.add(p);
+});
+const bandaOro = new THREE.Mesh(new THREE.TorusGeometry(.37,.05,10,40), matOro);
+bandaOro.rotation.x = Math.PI/2; bandaOro.position.y = .47;
+contornear(bandaOro, 1.16); mano.add(bandaOro);
+const conector = new THREE.Mesh(new THREE.CylinderGeometry(.11,.15,.14,20), matOroOsc);
+conector.position.y = .54; contornear(conector, 1.1); mano.add(conector);
+
+/* escudo con la corona, al frente del puño */
+const forma = new THREE.Shape();
+[[-.1,0],[.1,0],[.1,.04],[.105,.135],[.052,.082],[0,.155],[-.052,.082],[-.105,.135],[-.1,.04]]
+  .forEach(([x,y],i)=> i ? forma.lineTo(x,y) : forma.moveTo(x,y));
+const geoCorona = new THREE.ExtrudeGeometry(forma, { depth:.025, bevelEnabled:true, bevelThickness:.012, bevelSize:.012, bevelSegments:2 });
+const corona = new THREE.Mesh(geoCorona, matOro);
+corona.position.set(0, .225, .345); corona.rotation.x = -.16; corona.scale.set(1.25,1.25,1.25);   /* sigue la pendiente del puño */
+contornear(corona, 1.25); mano.add(corona);
+
+/* dedos: índice→meñique al frente (largos distintos) y pulgar opuesto */
+const F = (phi, f, delay, jit, dist) => ({ phi, l:[.21*f,.18*f,.14*f], r:[.098,.09,.083], ab:[-.50,.10,.00], ce:[0,-.02,dist], delay, jit });
+const DIGITOS = [
+  F(-62, .94, .00,  .03, .82),   /* índice   */
+  F(-22, 1.08, .06, -.02, 1.0),  /* medio    */
+  F( 19, 1.00, .12,  .02, .91),  /* anular   */
+  F( 58, .80, .18, -.03, .55),   /* meñique  */
+  { phi:-150, l:[.18,.17], r:[.118,.104], ab:[-.85,.05], ce:[-.10,.13], delay:.03, jit:0, pulgar:true }   /* pulgar */
+];
+const dedos = [];
+DIGITOS.forEach(D => {
+  const base = new THREE.Group();
+  base.rotation.y = D.phi * Math.PI/180;
+  const raiz = new THREE.Group(); raiz.position.set(0, -.10, D.pulgar ? .40 : .42); base.add(raiz);
+  let padre = raiz; const arts = [];
+  for (let j=0; j<D.l.length; j++){
+    const art = new THREE.Group(); padre.add(art); arts.push(art);
+    const len = D.l[j], r = D.r[j];
+    const fal = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 5, 12), matCrema);
+    fal.position.y = -(len/2 + r*.7);
+    contornear(fal, 1.13); art.add(fal);
+    const sig = new THREE.Group(); sig.position.y = -(len + r*1.35); art.add(sig);
+    padre = sig;
+  }
+  mano.add(base);
+  dedos.push({ arts, D });
+});
+
+garra.traverse(o => { if (o.isMesh && o.material !== NEGRO) o.castShadow = true; });
+garra.position.set(0, REPOSO_Y, 0);
 escena.add(garra);
 
 let aperturaGarra = 1;
+let giroMano = 0;                                            /* giro de la muñeca (rad) */
+const PRESA_EN_MANO = new THREE.Vector3(0, -.80/ESC, 0);      /* centro exacto de la cápsula agarrada, calculado con la geometría de los dedos */
+let sx = 0, sz = 0, vx = 0, vz = 0, px = 0, pz = 0, inicio = false, previoT = 0;
+const acota = (v,a,b) => Math.min(b, Math.max(a, v));
+const saleAtras = t => { const c = 1.35; return 1 + (c+1)*Math.pow(t-1,3) + c*Math.pow(t-1,2); };
 function pintarGarra(){
-  const a = 0.06 + aperturaGarra * 0.42;
-  dedos.forEach(p => p.rotation.x = a);
+  const c = 1 - aperturaGarra;                               /* 0 abierta, 1 cerrada */
+  const t = performance.now()/1000;
+  dedos.forEach((d, i) => {
+    const ci = acota((c - d.D.delay) / (1 - .22), 0, 1);
+    d.arts.forEach((art, j) => {
+      const cj = acota(ci*1.0 - j*.07, 0, 1);
+      const k = c < 1 && c > 0 ? saleAtras(cj) : cj;         /* rebote leve al cerrar */
+      const respira = (1-c) * Math.sin(t*1.7 + i*1.3) * .035; /* en reposo la mano respira */
+      art.rotation.x = d.D.ab[j] + (d.D.ce[j] - d.D.ab[j]) * k + respira + (j===0 ? d.D.jit : 0);
+    });
+  });
+  /* inercia: la mano cuelga y se queda atrás cuando el carro se mueve
+     (independiente de los cuadros por segundo: dt en unidades de 1/60 s) */
+  const ahora = performance.now();
+  const dt = inicio ? acota((ahora - previoT) / 16.667, .25, 3) : 1; previoT = ahora;
+  if (!inicio){ px = garra.position.x; pz = garra.position.z; inicio = true; }
+  const dx = (garra.position.x - px) / dt, dz = (garra.position.z - pz) / dt;
+  px = garra.position.x; pz = garra.position.z;
+  const amort = Math.pow(.80, dt);
+  vx += ((-dx*3.2) - sz) * .12 * dt; vx *= amort; sz += vx * dt;
+  vz += (( dz*3.2) - sx) * .12 * dt; vz *= amort; sx += vz * dt;
+  mano.rotation.y = giroMano;
+  columpio.rotation.z = acota(sz, -.35, .35);
+  columpio.rotation.x = acota(sx, -.35, .35);
+
   carro.position.x = garra.position.x;
   carro.position.z = garra.position.z;
   const alto = Math.max(carro.position.y - garra.position.y - .1, .02);
@@ -735,75 +839,77 @@ function alturaMonton(x, z){
   return top;
 }
 
-async function secuenciaMano(intento = 0){
-  const dx = (Math.random()*2-1) * (BX - R - .15);
-  const dz = (Math.random()*2-1) * (BZ - R - .15);
-  await moverCamara(V(dx*.5, 3.3, 8.2), V(dx*.6, .9, dz*.5), 700);
+async function secuenciaMano(){
+  /* 1 · el Rey escoge una cápsula de la capa de arriba (la que la mano puede rodear sin estorbos) */
+  const pozo = capsulas.filter(c => c.estado === "pozo").sort((a,b)=> b.obj.position.y - a.obj.position.y);
+  if (!pozo.length) return null;
+  const presa = pozo[Math.floor(Math.random() * Math.min(5, pozo.length))];
+  const tx = presa.obj.position.x, tz = presa.obj.position.z;
+  await moverCamara(V(tx*.5, 3.4, 7.6), V(tx*.7, 1.3, tz*.5), 700);
 
+  /* 2 · viaja abierta y centrada sobre esa cápsula */
   const x0 = garra.position.x, z0 = garra.position.z;
   sfx.motor();
-  await anima(850, k=>{ garra.position.x = x0 + (dx-x0)*k; garra.position.z = z0 + (dz-z0)*k; });
-  await espera(160);
+  await anima(850, k=>{ garra.position.x = x0 + (tx-x0)*k; garra.position.z = z0 + (tz-z0)*k; });
+  await espera(180);
 
-  const fondo = Math.max(alturaMonton(dx, dz) - R*.55, R*1.15);
+  /* 3 · baja hasta que el centro de la cápsula queda justo en el centro de la mano */
+  const yObjetivo = presa.obj.position.y - PRESA_EN_MANO.y * ESC;
   const y0 = garra.position.y;
   sfx.motor();
-  await anima(700, k => garra.position.y = y0 + (fondo - y0)*k);
-
-  sfx.pinza();
-  await anima(320, k => aperturaGarra = 1 - k);
-
-  let presa = null, mejor = 1e9;
-  for (const c of capsulas){
-    if (c.estado !== "pozo") continue;
-    const d = c.obj.position.distanceTo(garra.position);
-    if (d < mejor){ mejor = d; presa = c; }
-  }
-  const atrapo = presa && mejor < R*2.0;
-  if (atrapo){ presa.estado = "presa"; presa.vel.set(0,0,0); }
-
-  const y1 = garra.position.y;
-  await anima(700, k=>{
-    garra.position.y = y1 + (2.05 - y1)*k;
-    if (atrapo) presa.obj.position.set(garra.position.x, garra.position.y - R - .18, garra.position.z);
-  });
-
-  if (!atrapo){
-    sfx.falla();
-    await anima(280, k => aperturaGarra = k);
-    if (intento < 3) return secuenciaMano(intento+1);
-    presa = capsulas.find(c=>c.estado==="pozo");
-    if (!presa) return null;
-    presa.estado = "presa";
-  }
-
-  const cuelga = () => presa.obj.position.set(garra.position.x, garra.position.y - R - .18, garra.position.z);
-  // sube por encima de la pared antes de cruzar: así la cápsula nunca la atraviesa
-  sfx.motor();
-  const yA = garra.position.y;
   await Promise.all([
-    anima(520, k=>{ garra.position.y = yA + (VIAJE_Y - yA)*k; cuelga(); }),
-    moverCamara(V(garra.position.x*.4, 3.7, 8.6), V(garra.position.x*.5, 1.9, 0), 520)
+    anima(760, k => {
+      garra.position.y = y0 + (yObjetivo - y0)*k;
+      /* los dedos se abren paso: las cápsulas vecinas se apartan para que la mano nunca las atraviese */
+      for (const c of capsulas){
+        if (c === presa || c.estado !== "pozo") continue;
+        const ex = c.obj.position.x - tx, ez = c.obj.position.z - tz, d = Math.hypot(ex, ez) || .001;
+        if (d < 1.22 && c.obj.position.y > garra.position.y - 1.5){
+          const f = (1.22 - d) * .35;
+          c.obj.position.x += ex/d * f; c.obj.position.z += ez/d * f;
+        }
+      }
+    }),
+    moverCamara(V(tx*.5, 2.7, 6.4), V(tx*.8, Math.max(yObjetivo - .5, .5), tz*.4), 760)
   ]);
+  await espera(140);
+
+  /* 4 · cierra los dedos: se detienen cuando tocan la superficie */
+  presa.estado = "presa"; presa.vel.set(0,0,0);
+  sfx.pinza();
+  await anima(640, k => aperturaGarra = 1 - k);
+  await espera(120);
+
+  const cuelga = () => {
+    garra.updateMatrixWorld(true);
+    presa.obj.position.copy(mano.localToWorld(PRESA_EN_MANO.clone()));
+  };
+  const yc = garra.position.y;
+  sfx.motor();
+  await Promise.all([
+    anima(620, k=>{ garra.position.y = yc + (VIAJE_Y - yc)*k; cuelga(); }),
+    moverCamara(V(garra.position.x*.4, 3.7, 8.6), V(garra.position.x*.5, 1.9, 0), 620)
+  ]);
+  /* 5 · cruza por encima de la pared, girando la muñeca para que el hueco entre el meñique y el pulgar mire a la pared */
   const x2 = garra.position.x, z2 = garra.position.z;
   await Promise.all([
-    anima(950, k=>{
+    anima(1000, k=>{
       garra.position.x = x2 + (DUCTO_X - x2)*k;
       garra.position.z = z2 + (0.15  - z2)*k;
+      giroMano = GIRO_SUELTA * k;
       cuelga();
     }),
-    moverCamara(V(DUCTO_X*.55, 3.3, 7.8), V(DUCTO_X*.7, 1.6, .2), 950)
+    moverCamara(V(DUCTO_X*.55, 3.3, 7.8), V(DUCTO_X*.7, 1.6, .2), 1000)
   ]);
-  // baja hasta la boca del ducto y ahí la suelta
   sfx.motor();
   await Promise.all([
     anima(560, k=>{ garra.position.y = VIAJE_Y + (SUELTA_Y - VIAJE_Y)*k; cuelga(); }),
     moverCamara(V(DUCTO_X*.55, 2.4, 7.4), V(DUCTO_X*.7, .8, .2), 560)
   ]);
-  await espera(200);
+  await espera(220);
 
   sfx.pinza();
-  await anima(300, k => aperturaGarra = k);
+  await anima(380, k => aperturaGarra = k);
   presa.estado = "cayendo"; presa.vel.set(0, -.6, 0);
 
   await moverCamara(V(DUCTO_X + .55, BANDEJA_Y + 2.5, 5.4), V(DUCTO_X, BANDEJA_Y + .55, .15), 950);
@@ -818,7 +924,7 @@ async function volverAlReposo(presa){
   await anima(420, k=>{ garra.position.y = y3 + (VIAJE_Y - y3)*k; });
   const x3 = garra.position.x, z3 = garra.position.z;
   await Promise.all([
-    anima(800, k=>{ garra.position.x = x3*(1-k); garra.position.z = z3*(1-k); }),
+    anima(800, k=>{ garra.position.x = x3*(1-k); garra.position.z = z3*(1-k); giroMano = GIRO_SUELTA*(1-k); }),
     moverCamara(CAM_BASE.pos.clone(), CAM_BASE.mira.clone(), 800)
   ]);
   await anima(420, k=>{ garra.position.y = VIAJE_Y + (REPOSO_Y - VIAJE_Y)*k; });
