@@ -361,13 +361,15 @@ const CONFIG = {
 
 /* Colores de la paleta oficial. El color del premio tiñe la cédula entera. */
 const PREMIOS = [
-  { id:"funko",     nombre:"Funko Pop sorpresa",   detalle:"Un Funko de la colección del Rey, gratis con tu compra.",      cantidad:1, color:"#FFB727", cupon:"" },
-  { id:"envio",     nombre:"Envío gratis en Lima", detalle:"Para tu siguiente pedido dentro de Lima Metropolitana.",       cantidad:2, color:"#FCD611", cupon:"RUMAENVIO" },
-  { id:"dsc15",     nombre:"15% de descuento",     detalle:"Sobre el total de tu compra, sin monto mínimo.",               cantidad:3, color:"#A27EEF", cupon:"RUMA15" },
-  { id:"dsc10",     nombre:"10% de descuento",     detalle:"Sobre el total de tu compra, sin monto mínimo.",               cantidad:4, color:"#8E64E2", cupon:"RUMA10" },
-  { id:"sticker",   nombre:"Sticker pack Ruma",    detalle:"Pack de stickers coleccionables de regalo con tu pedido.",     cantidad:3, color:"#2952BB", cupon:"RUMASTICKER" },
-  { id:"soles20",   nombre:"S/20 de descuento",    detalle:"En compras desde S/150.",                                      cantidad:2, color:"#FF3B3B", cupon:"RUMA20SOLES" },
-  { id:"reintento", nombre:"El Rey lo pensará",    detalle:"Esta vez no soltó nada, pero te deja 5% por haber venido.",    cantidad:5, color:"#FFF8D8", cupon:"RUMA5" }
+  { id:"hotwheels", nombre:"Hot Wheels fantasía gratis", detalle:"Un Hot Wheels fantasía de regalo con tu compra. Válido por 30 días.", cantidad:1, color:"#FFB727", cupon:"" },
+  { id:"pokemon",   nombre:"Carta Pokémon Holo",   detalle:"Una carta Pokémon Holo de regalo. Válida por 30 días.",                 cantidad:1, color:"#2952BB", cupon:"" },
+  { id:"dsc15",     nombre:"15% de descuento",     detalle:"En tu próxima compra, pre-venta o pago. Válido por 30 días.",           cantidad:1, color:"#A27EEF", cupon:"RUMA15" },
+  { id:"dscfunko",  nombre:"10% en Funkos en stock", detalle:"En un Funko en stock, en tu próxima compra o pago. Válido por 30 días.", cantidad:1, color:"#FFB727", cupon:"RUMAFUNKO10" },
+  { id:"dsc10",     nombre:"10% de descuento",     detalle:"En tu próxima compra, pre-venta o pago. Válido por 30 días.",           cantidad:2, color:"#8E64E2", cupon:"RUMA10" },
+  { id:"envio",     nombre:"Envío gratis",         detalle:"Cubre el envío de tu próxima compra, hasta S/10. Válido por 30 días.",  cantidad:2, color:"#FCD611", cupon:"RUMAENVIO" },
+  { id:"soles5",    nombre:"S/5 de descuento",     detalle:"En tu próxima compra, pre-venta o pago. Válido por 30 días.",           cantidad:3, color:"#FF3B3B", cupon:"RUMA5SOLES" },
+  { id:"soles2",    nombre:"S/2 de descuento",     detalle:"En tu próxima compra, pre-venta o pago. Válido por 30 días.",           cantidad:4, color:"#A27EEF", cupon:"RUMA2SOLES" },
+  { id:"reintento", nombre:"El Rey lo pensará",    detalle:"Esta vez no soltó nada, pero te deja 5% por haber venido.",             cantidad:5, color:"#FFF8D8", cupon:"RUMA5" }
 ];
 const TOTAL = PREMIOS.reduce((s,p)=>s+p.cantidad,0);
 const MODO_REAL = Boolean(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
@@ -376,7 +378,7 @@ const SUAVE = matchMedia("(prefers-reduced-motion: reduce)").matches;
 /* ══════════════════════════════════════════════════════════
    2 · ESTADO
    ══════════════════════════════════════════════════════════ */
-const LLAVE = "ruma-rey-" + CONFIG.CAMPANA;
+const LLAVE = "ruma-rey-v2-" + CONFIG.CAMPANA;
 function leerEstado(){
   try{ const g = JSON.parse(localStorage.getItem(LLAVE)||"null");
        if (g && g.total === TOTAL) return g; }catch(e){}
@@ -935,7 +937,7 @@ function mensajeWhatsApp(premio, cupon, codigo){
   const l = ["Hola Ruma. La Máquina del Rey me dio:", "", "• " + premio.nombre];
   if (cupon) l.push("• Cupón: " + cupon);
   l.push("• Mi código: " + codigo, "");
-  l.push(premio.id === "funko" ? "¿Cómo hago para reclamar mi Funko?" : "Quiero usarlo en mi compra.");
+  l.push(["hotwheels","pokemon"].includes(premio.id) ? "¿Cómo hago para reclamar mi premio?" : "Quiero usarlo en mi compra.");
   return l.join("\n");
 }
 
