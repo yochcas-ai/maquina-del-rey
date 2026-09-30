@@ -597,7 +597,7 @@ const matCrema = toon(0xFFF8D8);
 const matTinta = new THREE.MeshBasicMaterial({ color:0x131316 });
 
 /* columpio: la mano cuelga de arriba y se balancea alrededor del punto del cable */
-const ESC = 1.4;                                            /* la mano es más grande que la cápsula: la rodea */
+const ESC = 1.2;                                            /* la mano es más grande que la cápsula: la rodea */
 const columpio = new THREE.Group(); columpio.position.y = .55*ESC; garra.add(columpio);
 const mano = new THREE.Group(); mano.position.y = -.55*ESC; mano.scale.setScalar(ESC); columpio.add(mano);
 
@@ -644,13 +644,13 @@ corona.position.set(0, .225, .345); corona.rotation.x = -.16; corona.scale.set(1
 contornear(corona, 1.25); mano.add(corona);
 
 /* dedos: índice→meñique al frente (largos distintos) y pulgar opuesto */
-const F = (phi, f, delay, jit, dist) => ({ phi, l:[.21*f,.18*f,.14*f], r:[.098,.09,.083], ab:[-.50,.10,.00], ce:[0,-.02,dist], delay, jit });
+const F = (phi, f, delay, jit, ce) => ({ phi, l:[.21*f,.18*f,.14*f], r:[.098,.09,.083], ab:[-.50,.10,.00], ce, delay, jit });
 const DIGITOS = [
-  F(-62, .94, .00,  .03, .82),   /* índice   */
-  F(-22, 1.08, .06, -.02, 1.0),  /* medio    */
-  F( 19, 1.00, .12,  .02, .91),  /* anular   */
-  F( 58, .80, .18, -.03, .55),   /* meñique  */
-  { phi:-150, l:[.18,.17], r:[.118,.104], ab:[-.85,.05], ce:[-.10,.13], delay:.03, jit:0, pulgar:true }   /* pulgar */
+  F(-62, .94, .00,  .03, [-.2,.13,.64]),   /* índice   */
+  F(-22, 1.08, .06, -.02, [-.2,.21,.64]),  /* medio    */
+  F( 19, 1.00, .12,  .02, [-.2,.13,.73]),  /* anular   */
+  F( 58, .80, .18, -.03, [-.2,.13,.46]),   /* meñique  */
+  { phi:-150, l:[.18,.17], r:[.118,.104], ab:[-.85,.05], ce:[-.20,-.10], delay:.03, jit:0, pulgar:true }   /* pulgar */
 ];
 const dedos = [];
 DIGITOS.forEach(D => {
@@ -677,7 +677,7 @@ escena.add(garra);
 
 let aperturaGarra = 1;
 let giroMano = 0;                                            /* giro de la muñeca (rad) */
-const PRESA_EN_MANO = new THREE.Vector3(0, -.80/ESC, 0);      /* centro exacto de la cápsula agarrada, calculado con la geometría de los dedos */
+const PRESA_EN_MANO = new THREE.Vector3(0, -.72/ESC, 0);      /* centro exacto de la cápsula agarrada, calculado con la geometría de los dedos */
 let sx = 0, sz = 0, vx = 0, vz = 0, px = 0, pz = 0, inicio = false, previoT = 0;
 const acota = (v,a,b) => Math.min(b, Math.max(a, v));
 const saleAtras = t => { const c = 1.35; return 1 + (c+1)*Math.pow(t-1,3) + c*Math.pow(t-1,2); };
