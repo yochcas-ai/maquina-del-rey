@@ -369,7 +369,7 @@ const PREMIOS = [
   { id:"envio",     nombre:"Envío gratis",         detalle:"Cubre el envío de tu próxima compra, hasta S/10. Válido por 30 días.",  cantidad:2, color:"#FCD611", cupon:"RUMAENVIO" },
   { id:"soles5",    nombre:"S/5 de descuento",     detalle:"En tu próxima compra, pre-venta o pago. Válido por 30 días.",           cantidad:3, color:"#FF3B3B", cupon:"RUMA5SOLES" },
   { id:"soles2",    nombre:"S/2 de descuento",     detalle:"En tu próxima compra, pre-venta o pago. Válido por 30 días.",           cantidad:4, color:"#A27EEF", cupon:"RUMA2SOLES" },
-  { id:"reintento", nombre:"El Rey lo pensará",    detalle:"Esta vez no soltó nada, pero te deja 5% por haber venido.",             cantidad:5, color:"#FFF8D8", cupon:"RUMA5" }
+  { id:"reintento", nombre:"El Rey lo pensará",    detalle:"Esta vez no soltó nada, pero te deja 5% por haber venido. Válido por 30 días.", cantidad:5, color:"#FFF8D8", cupon:"RUMA5" }
 ];
 const TOTAL = PREMIOS.reduce((s,p)=>s+p.cantidad,0);
 const MODO_REAL = Boolean(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
