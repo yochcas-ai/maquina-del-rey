@@ -986,6 +986,25 @@ async function canjearLocal(codigo){
   estado.usados.push(codigo); guardar();
   return { ok:true, premio, cupon:premio.cupon, restantes:restantes() };
 }
+/* la bóveda real: cuántos tesoros quedan de verdad (lo cuenta el servidor, no este navegador) */
+async function refrescarBobeda(){
+  if (!MODO_REAL) return;
+  try{
+    const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 4000);
+    const r = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/rpc/bobeda`, {
+      method:"POST", signal: ctl.signal,
+      headers:{ "Content-Type":"application/json", "apikey":CONFIG.SUPABASE_ANON_KEY,
+                "Authorization":"Bearer "+CONFIG.SUPABASE_ANON_KEY },
+      body: JSON.stringify({ p_campana: CONFIG.CAMPANA })
+    });
+    clearTimeout(t);
+    if (!r.ok) return;
+    const b = await r.json();
+    if (b && b.stock && Object.keys(b.stock).length){
+      PREMIOS.forEach(p => { estado.stock[p.id] = Number(b.stock[p.id] ?? 0); });
+    }
+  }catch(e){ /* sin conexión: se queda con lo último que se sabía */ }
+}
 async function canjearRemoto(codigo){
   const r = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/rpc/jugar`, {
     method:"POST",
@@ -1031,6 +1050,7 @@ $("#consola").addEventListener("submit", async e=>{
   const presa = await secuenciaMano();
   mostrarPremio(res.premio, res.cupon, codigo);
 
+  await refrescarBobeda();
   pintarTesoro(); pintarContador();
   input.value = "";
   volverAlReposo(presa).finally(()=>{ ocupado = false; botonJugar.disabled = false; input.disabled = false; });
@@ -1119,10 +1139,13 @@ function pintarTesoro(){
 const pintarContador = () => $("#contador").textContent = String(restantes()).padStart(2,"0");
 
 medir();
-sembrar(restantes());
-pintarTesoro(); pintarContador();
 requestAnimationFrame(bucle);
-setTimeout(()=>$("#cargando").classList.add("fuera"), 450);
+(async ()=>{
+  await refrescarBobeda();
+  sembrar(restantes());
+  pintarTesoro(); pintarContador();
+  setTimeout(()=>$("#cargando").classList.add("fuera"), 450);
+})();
 if (!MODO_REAL) decir("Modo demo: prueba con cualquier código con formato RUMA-XXXX-XXXX.");
 </script>
 </body>
