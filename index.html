@@ -77,6 +77,16 @@ body::before{
 .credito img{width:28px;height:28px;display:block}
 .credito b{font-family:var(--display);font-size:20px;line-height:1;color:var(--tinta);letter-spacing:.02em}
 .credito span{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--brand-sombra)}
+.reino{
+  display:flex;align-items:center;gap:7px;height:40px;padding:0 15px 0 11px;text-decoration:none;
+  background:var(--brand);color:var(--crema);border:var(--linea) solid var(--tinta);border-radius:999px;
+  font-family:var(--display);font-size:16px;letter-spacing:.03em;line-height:1;box-shadow:4px 4px 0 var(--tinta);
+  transition:transform .1s,box-shadow .1s;
+}
+.reino svg{width:20px;height:20px;flex:none}
+.reino:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--tinta)}
+.reino:active{transform:translate(4px,4px);box-shadow:0 0 0 var(--tinta)}
+.reino:focus-visible{outline:3px solid var(--secondary);outline-offset:2px}
 .mudo{
   width:40px;height:40px;flex:none;cursor:pointer;font-size:15px;line-height:1;
   border:var(--linea) solid var(--tinta);border-radius:50%;background:var(--blanco);color:var(--tinta);
@@ -263,6 +273,7 @@ body::before{
           <span>en la bóveda</span>
         </div>
       </div>
+      <a class="reino" href="reino/" aria-label="Entrar al Reino de Ruma, más juegos"><svg viewBox="0 0 40 40" aria-hidden="true" fill="none" stroke="#131316" stroke-width="3" stroke-linejoin="round"><path d="M5 29L3 12l9 8 8-12 8 12 9-8-2 17z" fill="#FFB727"/><rect x="5" y="29" width="30" height="5" rx="1" fill="#FCD611"/></svg>Reino</a>
       <button class="mudo" id="mudo" type="button" aria-label="Activar o silenciar el sonido">♪</button>
     </div>
   </header>
