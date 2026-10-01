@@ -92,13 +92,14 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 
   <section class="tablon" aria-labelledby="tt">
     <h2 id="tt">Tablón del Reino</h2>
-    <p class="nota">Jugadores de ejemplo, en metros. En la web real aquí estarán los jugadores de verdad.</p>
+    <p class="nota">Las mejores marcas de este mes, en metros. El tablón se reinicia cada mes.</p>
     <ol id="lista"></ol>
     <div class="apodo"><label for="apodo">Tu apodo</label><input id="apodo" maxlength="14" autocomplete="off" placeholder="Jugador"></div>
   </section>
   <p class="fin">Tus monedas y récords se guardan en este dispositivo. Puedes ganar hasta 40 monedas al día.</p>
 </div>
 
+<script src="reino.js"></script>
 <script>
 (function(){
   var $=function(s){return document.querySelector(s)};
@@ -109,11 +110,7 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 
   function leer(k,d){try{var v=localStorage.getItem(k);return v===null?d:v}catch(e){return d}}
   function guardar(k,v){try{localStorage.setItem(k,String(v))}catch(e){}}
-  var TOPE=40;
-  function ganar(n){var d=new Date(),h=d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(),p=leer('rey-dia','').split(':'),ya=p[0]===h?(parseInt(p[1],10)||0):0,da=Math.max(0,Math.min(n,TOPE-ya));
-    guardar('rey-dia',h+':'+(ya+da));monedas=(parseInt(leer('rey-monedas','0'),10)||0)+da;guardar('rey-monedas',monedas);return da}
-  var monedas=parseInt(leer('rey-monedas','0'),10)||0, record=parseInt(leer('rey-cam-record','0'),10)||0;
-  $('#apodo').value=leer('rey-apodo','');
+  var partida=null, monedas=Reino.saldo(), record=parseInt(leer('rey-cam-record','0'),10)||0;
   var sonido=true, ctxA=null;
   function audio(){if(!ctxA){try{ctxA=new (window.AudioContext||window.webkitAudioContext)()}catch(e){ctxA=null}}if(ctxA&&ctxA.state==='suspended')ctxA.resume();return ctxA}
   function tono(f1,f2,dur,tipo,vol){
@@ -167,6 +164,7 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
   function empezar(){
     audio();estado='juego';lane=0;carX=0;vel=0;dist=0;monedasRun=0;filas=[];proxima=0;tiempo=0;sacudida=0;velocidad=9;salto=0;enfria=0;brillo=0;pulso=0;chispas=[];anillos=[];libreAnt=0;nivel=1;avisoNivel=0;
     $('#saltar').hidden=false;$('#velo').hidden=true;$('#jugar').hidden=true;
+    partida=null;if(Reino.registrado())Reino.iniciar('camino').then(function(j){if(j&&j.ok)partida=j.partida},function(){});
     lastT=0;cancelAnimationFrame(raf);raf=requestAnimationFrame(bucle);
   }
   function mover(dir){
@@ -188,12 +186,28 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
   }
   function fin(){
     estado='fin';$('#saltar').hidden=true;choque();sacudida=.5;choqueT=.6;
-    var m=Math.floor(dist), quiere=Math.floor(m/250)+Math.floor(monedasRun/4), marca=m>record&&m>0, gana=quiere?ganar(quiere):0;
+    var m=Math.floor(dist), fichas=monedasRun, marca=m>record&&m>0, id=partida;partida=null;
     if(marca){record=m;guardar('rey-cam-record',record)}
     pintar();
-    var carta=$('#carta');carta.textContent='';
-    var b=document.createElement('b');b.textContent=marca?'¡Nuevo récord!':'¡Ay, una piedra!';carta.appendChild(b);
-    carta.appendChild(document.createTextNode('Recorriste '+m+' m y juntaste '+monedasRun+' ficha'+(monedasRun===1?'':'s')+'. '+(quiere&&!gana?'Hoy ya juntaste el máximo de monedas. ¡Vuelve mañana!':gana?'Ganaste '+gana+' moneda'+(gana===1?'':'s')+'.':'Cada 4 fichas o 250 m es una moneda.')));
+    var carta=$('#carta');
+    function mostrar(extra){
+      carta.textContent='';
+      var b=document.createElement('b');b.textContent=marca?'¡Nuevo récord!':'¡Ay, una piedra!';carta.appendChild(b);
+      carta.appendChild(document.createTextNode('Recorriste '+m+' m y juntaste '+fichas+' ficha'+(fichas===1?'':'s')+'. '+extra));
+    }
+    if(!Reino.registrado()) mostrar('Elige tu apodo abajo para ganar monedas y entrar al tablón.');
+    else if(!id||(m<1&&fichas<1)) mostrar(id?'Cada 4 fichas o 250 m es una moneda.':'Sin conexión: esta partida no cuenta para el tablón.');
+    else{
+      mostrar('Guardando tu partida…');
+      Reino.cerrar(id,m,fichas).then(function(j){
+        if(j&&j.ok&&!j.revisar){
+          monedas=j.saldo;Reino.guardarSaldo(monedas);pintar();
+          mostrar((j.ganadas>0?'Ganaste '+j.ganadas+' moneda'+(j.ganadas===1?'':'s')+'.':'Esta vez no sumaste monedas.')+(j.tope?' Hoy ya llegaste al máximo de monedas: vuelve mañana.':'')+(j.puesto?' Vas en el puesto '+j.puesto+' del mes.':''));
+          tablon();
+        } else if(j&&j.ok) mostrar('Tu partida quedó guardada para revisión.');
+        else mostrar('No pudimos guardar la partida. Revisa tu conexión.');
+      },function(){mostrar('Sin conexión: esta partida no cuenta para el tablón.')});
+    }
     setTimeout(function(){$('#velo').hidden=false;var j=$('#jugar');j.hidden=false;j.textContent='Jugar otra vez'},650);
   }
 
@@ -354,20 +368,13 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
   }
 
   function tablon(){
-    var yo=(($('#apodo').value||'').trim()||'Tú').slice(0,14);
-    var filas=[['Reina_Lu',1380],['Cofre77',1120],['DonPixel',860],['Mari',640],['Tuto',420]].map(function(e){return {n:e[0],p:e[1],ej:true}});
-    if(record>0)filas.push({n:yo,p:record,yo:true});
-    filas.sort(function(a,b){return b.p-a.p||(a.yo?-1:1)});
-    var ul=$('#lista');ul.textContent='';
-    filas.slice(0,6).forEach(function(f,i){
-      var li=document.createElement('li'),a=document.createElement('span');a.className='pos';a.textContent=i+1;
-      var b=document.createElement('span');b.textContent=f.n;if(f.yo)b.className='yo';
-      if(f.ej){var s=document.createElement('span');s.className='ej';s.textContent='ejemplo';b.appendChild(s)}
-      var c=document.createElement('span');c.className='pts';c.textContent=f.p+' m';
-      li.appendChild(a);li.appendChild(b);li.appendChild(c);ul.appendChild(li);
-    });
+    Reino.tablon().then(function(d){
+      if(!d||!d.ok)throw 0;
+      if(d.yo){monedas=d.yo.saldo;$('#monedas').textContent=monedas}
+      Reino.filas($('#lista'),d.camino,'puntaje',' m',Reino.apodo(),'Aún no hay nadie este mes. ¡Sé el primero!');
+    },function(){var ul=$('#lista');ul.textContent='';var li=document.createElement('li');li.className='vacio';li.textContent='No pudimos cargar el tablón.';ul.appendChild(li)});
   }
-  function pintar(){$('#monedas').textContent=monedas;$('#record').textContent=record;tablon()}
+  function pintar(){$('#monedas').textContent=monedas;$('#record').textContent=record}
 
   $('#pista').addEventListener('pointerdown',function(e){
     if(estado!=='juego')return;e.preventDefault();var r=cv.getBoundingClientRect();mover(e.clientX<r.left+r.width/2?-1:1)});
@@ -380,10 +387,10 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
   $('#saltar').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();saltar()});
   $('#jugar').addEventListener('click',function(){if(estado==='pausa'){estado='juego';$('#velo').hidden=true;$('#jugar').hidden=true;lastT=0;cancelAnimationFrame(raf);raf=requestAnimationFrame(bucle)}else empezar()});
   $('#sonido').addEventListener('click',function(){sonido=!sonido;this.textContent='Sonido: '+(sonido?'sí':'no');this.setAttribute('aria-pressed',sonido)});
-  $('#apodo').addEventListener('input',function(){guardar('rey-apodo',this.value);tablon()});
+  Reino.ligarApodo($('#apodo'),function(){tablon()});
   document.addEventListener('visibilitychange',function(){if(document.hidden&&estado==='juego'){estado='pausa';$('#velo').hidden=false;$('#jugar').hidden=false;$('#jugar').textContent='Seguir';$('#carta').textContent='Pausa. Toca Seguir para volver al camino.';cancelAnimationFrame(raf)}});
   REY.addEventListener('load',function(){if(estado!=='juego')dibujar()});
-  medir();pintar();dibujar();
+  medir();pintar();tablon();dibujar();
 })();
 </script>
 

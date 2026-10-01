@@ -75,24 +75,43 @@ body.antes .app .cab,body.antes .app .yo,body.antes .app .juegos,body.antes .app
   <nav class="juegos" aria-label="Juegos del reino">
     <a class="tarjeta t-maq" href="../"><span class="ico" aria-hidden="true"><svg viewBox="0 0 40 40" width="34" height="34" aria-hidden="true" fill="none" stroke="#131316" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><rect x="6" y="16" width="28" height="19" rx="3" fill="#FF3B3B"/><rect x="4" y="11" width="32" height="7" rx="2" fill="#FFF8D8"/><path d="M20 11v24" /><path d="M20 11c-3-7-11-6-9-2 1 3 9 2 9 2zm0 0c3-7 11-6 9-2-1 3-9 2-9 2z" fill="#FFB727"/></svg></span><span><h2>La Máquina del Rey</h2><p>¿Tienes un código? Gana un premio de verdad.</p></span><span class="ir" aria-hidden="true">›</span></a>
     <a class="tarjeta t-mem" href="memoria.html"><span class="ico" aria-hidden="true"><svg viewBox="0 0 40 40" width="34" height="34" aria-hidden="true" fill="none" stroke="#131316" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><ellipse cx="20" cy="14" rx="14" ry="5" fill="#FFF8D8"/><path d="M6 14v15c0 3 6 5 14 5s14-2 14-5V14" fill="#2952BB"/><path d="M12 19l4 12M20 20v13M28 19l-4 12"/><path d="M26 3l-7 9M13 3l6 9" stroke="#FFB727" stroke-width="3"/></svg></span><span><h2>Memoria del Rey</h2><p>Repite los tambores. <span class="marca" id="rm"></span></p></span><span class="ir" aria-hidden="true">›</span></a>
-    <a class="tarjeta t-cam" href="camino.html"><span class="ico" aria-hidden="true"><svg viewBox="0 0 40 40" width="34" height="34" aria-hidden="true" fill="none" stroke="#131316" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M4 25l3-8c1-3 3-4 6-4h14c3 0 5 1 6 4l3 8v6H4z" fill="#8E64E2"/><path d="M11 17l2-3h14l2 3z" fill="#FFF8D8"/><circle cx="12" cy="31" r="4" fill="#FFB727"/><circle cx="28" cy="31" r="4" fill="#FFB727"/></svg></span><span><h2>Camino de Piedras</h2><p>Esquiva, salta y junta monedas. <span class="marca" id="rc"></span></p></span><span class="ir" aria-hidden="true">›</span></a>
+    <a class="tarjeta t-cam" href="camino.html"><span class="ico" aria-hidden="true"><svg viewBox="0 0 40 40" width="34" height="34" aria-hidden="true" fill="none" stroke="#131316" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M4 25l3-8c1-3 3-4 6-4h14c3 0 5 1 6 4l3 8v6H4z" fill="#8E64E2"/><path d="M11 17l2-3h14l2 3z" fill="#FFF8D8"/><circle cx="12" cy="31" r="4" fill="#FFB727"/><circle cx="28" cy="31" r="4" fill="#FFB727"/></svg></span><span><h2>Camino de Piedras</h2><p>Esquiva, salta y junta fichas. <span class="marca" id="rc"></span></p></span><span class="ir" aria-hidden="true">›</span></a>
     <div class="tarjeta pronto"><span class="ico" aria-hidden="true"><svg viewBox="0 0 40 40" width="34" height="34" aria-hidden="true" fill="none" stroke="#131316" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M5 17c0-8 7-12 15-12s15 4 15 12z" fill="#FFB727"/><rect x="5" y="17" width="30" height="17" rx="2" fill="#8E64E2"/><rect x="16" y="15" width="8" height="9" rx="2" fill="#FFF8D8"/></svg></span><span><h2>Baúl del tesoro</h2><p>Canjea tus monedas una vez al mes.</p></span><span class="ir">Pronto</span></div>
     <div class="tarjeta pronto"><span class="ico" aria-hidden="true"><svg viewBox="0 0 40 40" width="34" height="34" aria-hidden="true" fill="none" stroke="#131316" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M5 29L3 12l9 8 8-12 8 12 9-8-2 17z" fill="#FFB727"/><rect x="5" y="29" width="30" height="5" rx="1" fill="#FCD611"/></svg></span><span><h2>Avatares del Rey</h2><p>Elige tu propio Rey con tus monedas.</p></span><span class="ir">Pronto</span></div>
   </nav>
-  <p class="pie">Las monedas y récords se guardan en este dispositivo.</p>
+  <section class="tablon" aria-labelledby="tt">
+    <h2 id="tt">Tablón del mes</h2>
+    <p class="nota">Quien termine el mes con más monedas ganadas recibe una sorpresa de Ruma. El tablón vuelve a cero el día 1. <b id="cuenta"></b></p>
+    <ol id="top"></ol>
+    <p class="nota" id="mipuesto" style="margin:8px 0 0"></p>
+  </section>
+  <p class="pie">Tu apodo lo ve todo el mundo: no uses tu nombre completo ni datos personales. Máximo 40 monedas al día.</p>
 </main>
+<script src="reino.js"></script>
 <script>
 (function(){
   function leer(k,d){try{var v=localStorage.getItem(k);return v===null?d:v}catch(e){return d}}
-  function guardar(k,v){try{localStorage.setItem(k,String(v))}catch(e){}}
   function n(k){return parseInt(leer(k,'0'),10)||0}
-  document.getElementById('monedas').textContent=n('rey-monedas');
+  var $=function(s){return document.getElementById(s)};
   var rm=n('rey-mem-record'),rc=n('rey-cam-record');
-  document.getElementById('rm').textContent=rm?'Récord: '+rm+' rondas':'';
-  document.getElementById('rc').textContent=rc?'Récord: '+rc+' m':'';
-  var a=document.getElementById('apodo');a.value=leer('rey-apodo','');
-  a.addEventListener('input',function(){guardar('rey-apodo',this.value)});
-
+  $('rm').textContent=rm?'Récord: '+rm+' rondas':'';
+  $('rc').textContent=rc?'Récord: '+rc+' m':'';
+  $('monedas').textContent=Reino.saldo();
+  function tablon(){
+    Reino.tablon().then(function(d){
+      if(!d||!d.ok)throw 0;
+      if(d.yo)$('monedas').textContent=d.yo.saldo;
+      Reino.filas($('top'),d.top.slice(0,10),'monedas',' ',d.yo&&d.yo.apodo,'Aún no hay nadie este mes. ¡Sé el primero en sumar monedas!');
+      var dias=d.dias_restantes;
+      $('cuenta').textContent=dias<=1?'¡Último día del mes!':'Faltan '+dias+' días para que se reinicie.';
+      var yo=$('mipuesto');
+      if(d.yo&&d.yo.mes>0)yo.textContent='Tú: puesto '+d.yo.puesto+' con '+d.yo.mes+' monedas ganadas este mes. Hoy llevas '+d.yo.hoy+' de '+d.tope_diario+'.';
+      else if(d.yo)yo.textContent='Aún no sumas monedas este mes. Hoy puedes ganar hasta '+d.tope_diario+'.';
+      else yo.textContent='Elige tu apodo arriba para aparecer en el tablón.';
+    },function(){var ul=$('top');ul.textContent='';var li=document.createElement('li');li.className='vacio';li.textContent='No pudimos cargar el tablón. Revisa tu conexión.';ul.appendChild(li)});
+  }
+  Reino.ligarApodo($('apodo'),tablon);
+  tablon();
   var ent=document.getElementById('ent');
   function visto(){try{return sessionStorage.getItem('reino-visto')==='1'}catch(e){return false}}
   function marcar(){try{sessionStorage.setItem('reino-visto','1')}catch(e){}}
