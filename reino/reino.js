@@ -62,14 +62,15 @@
       return est;
     },
     /* dibuja una lista del tablón */
-    filas:function(ul,lista,campo,sufijo,yoApodo,vacio){
+    filas:function(ul,lista,campo,sufijo,yoApodo,vacio,desde){
+      desde=desde||0;
       ul.textContent='';
       if(!lista||!lista.length){var li=document.createElement('li');li.className='vacio';li.textContent=vacio||'Aún no hay nadie. ¡Sé el primero del mes!';ul.appendChild(li);return}
       lista.forEach(function(f,i){
         var li=document.createElement('li'),a=document.createElement('span'),b=document.createElement('span'),c=document.createElement('span');
-        if(i===0)li.className='top1';
+        if(i===0&&!desde)li.className='top1';
         if(yoApodo&&f.apodo===yoApodo){li.className+=' mio';b.className='yo'}
-        a.className='pos';if(i===0)a.innerHTML=CORONA;else a.textContent=i+1;
+        a.className='pos';if(i===0&&!desde)a.innerHTML=CORONA;else a.textContent=i+1+desde;
         b.textContent=f.apodo;c.className='pts';c.textContent=f[campo]+(sufijo||'');
         li.appendChild(a);li.appendChild(b);li.appendChild(c);ul.appendChild(li);
       });
